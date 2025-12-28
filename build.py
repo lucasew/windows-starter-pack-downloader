@@ -81,6 +81,9 @@ with tempfile.TemporaryDirectory(prefix='download_rclone') as tempdir:
     downloaded_zip = tempdir / "rclone.zip"
     with zipfile.ZipFile(downloaded_zip, 'r') as z:
         for file in z.namelist():
+            if ".." in file or file.startswith("/"):
+                print(f"Skipping malicious file path in zip: {file}")
+                continue
             if file.endswith("rclone.exe"):
                 z.extract(file, tempdir)
                 shutil.move(tempdir / file, work_dir / "root" / "bin")
@@ -100,6 +103,9 @@ with tempfile.TemporaryDirectory(prefix='download_ffmpeg') as tempdir:
     downloaded_zip = tempdir / "ffmpeg.zip"
     with zipfile.ZipFile(downloaded_zip, 'r') as z:
         for file in z.namelist():
+            if ".." in file or file.startswith("/"):
+                print(f"Skipping malicious file path in zip: {file}")
+                continue
             try:
                 file.index("/bin")
                 z.extract(file, tempdir)
@@ -117,6 +123,9 @@ with tempfile.TemporaryDirectory(prefix='download_geek') as tempdir:
     downloaded_zip = tempdir / "geek.zip"
     with zipfile.ZipFile(downloaded_zip, 'r') as z:
         for file in z.namelist():
+            if ".." in file or file.startswith("/"):
+                print(f"Skipping malicious file path in zip: {file}")
+                continue
             if not file.endswith(".exe"):
                 continue
             z.extract(file, tempdir)
@@ -133,6 +142,9 @@ with tempfile.TemporaryDirectory(prefix='download_aria2') as tempdir:
             aria2_zip = download_to(asset['browser_download_url'], tempdir, filename="aria2.zip")
             with zipfile.ZipFile(aria2_zip, 'r') as z:
                 for file in z.namelist():
+                    if ".." in file or file.startswith("/"):
+                        print(f"Skipping malicious file path in zip: {file}")
+                        continue
                     if not file.endswith(".exe"):
                         continue
                     z.extract(file, tempdir)
@@ -147,5 +159,9 @@ with tempfile.TemporaryDirectory(prefix='download_wub') as tempdir:
     tempdir = Path(tempdir)
     downloaded_zip = download_to("https://www.sordum.org/files/downloads.php?st-windows-update-blocker", tempdir, "wub.zip")
     with zipfile.ZipFile(downloaded_zip, 'r') as z:
-        z.extractall(tempdir)
+        for member in z.infolist():
+            if ".." in member.filename or member.filename.startswith("/"):
+                print(f"Skipping malicious file path in zip: {member.filename}")
+                continue
+            z.extract(member, tempdir)
     shutil.move(tempdir / "Wub", work_dir / "root" / "Program Files")
