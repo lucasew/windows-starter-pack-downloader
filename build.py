@@ -41,6 +41,21 @@ def webcat(request):
         data += chunk
     return data.decode('utf-8')
 
+
+def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
+    bin_dir = work_dir / "root" / "bin"
+    with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = Path(tempdir)
+        downloaded_zip = download_to(url, tempdir, filename=zip_filename)
+        with zipfile.ZipFile(downloaded_zip, 'r') as z:
+            for file_path_str in z.namelist():
+                if file_filter(file_path_str):
+                    z.extract(file_path_str, tempdir)
+                    extracted_file = tempdir / file_path_str
+                    if not extracted_file.is_dir():
+                        shutil.move(extracted_file, bin_dir)
+
+
 args = parser.parse_args()
 
 for d in [args.output_dir / "root" / "Program Files", args.output_dir / "root" / "bin"]:
@@ -75,15 +90,7 @@ with tempfile.TemporaryDirectory(prefix='download_adwcleaner') as tempdir:
     download_to("https://adwcleaner.malwarebytes.com/adwcleaner?channel=release", work_dir, filename="adwcleaner.exe")
 
 # rclone
-with tempfile.TemporaryDirectory(prefix='download_rclone') as tempdir:
-    tempdir = Path(tempdir)
-    output_file = download_to("https://downloads.rclone.org/rclone-current-windows-amd64.zip", tempdir, "rclone.zip")
-    downloaded_zip = tempdir / "rclone.zip"
-    with zipfile.ZipFile(downloaded_zip, 'r') as z:
-        for file in z.namelist():
-            if file.endswith("rclone.exe"):
-                z.extract(file, tempdir)
-                shutil.move(tempdir / file, work_dir / "root" / "bin")
+download_zip_and_extract_to_bin(work_dir, "https://downloads.rclone.org/rclone-current-windows-amd64.zip", "rclone.zip", lambda f: f.endswith("rclone.exe"))
 
 # yt-dlp
 with tempfile.TemporaryDirectory(prefix='download_ytdlp') as tempdir:
@@ -94,52 +101,16 @@ with tempfile.TemporaryDirectory(prefix='download_ytdlp') as tempdir:
         download_to(asset['browser_download_url'], work_dir / "root" / "bin", filename="yt-dlp.exe")
 
 # ffmpeg
-with tempfile.TemporaryDirectory(prefix='download_ffmpeg') as tempdir:
-    tempdir = Path(tempdir)
-    output_file = download_to("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", tempdir, "ffmpeg.zip")
-    downloaded_zip = tempdir / "ffmpeg.zip"
-    with zipfile.ZipFile(downloaded_zip, 'r') as z:
-        for file in z.namelist():
-            try:
-                file.index("/bin")
-                z.extract(file, tempdir)
-                origin = tempdir / file
-                if origin.is_dir():
-                    continue
-                shutil.move(origin, work_dir / "root" / "bin")
-            except ValueError:
-                pass
+download_zip_and_extract_to_bin(work_dir, "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", "ffmpeg.zip", lambda f: "/bin/" in f)
 
 # geek uninstaller
-with tempfile.TemporaryDirectory(prefix='download_geek') as tempdir:
-    tempdir = Path(tempdir)
-    output_file = download_to("https://geekuninstaller.com/geek.zip", tempdir, "geek.zip")
-    downloaded_zip = tempdir / "geek.zip"
-    with zipfile.ZipFile(downloaded_zip, 'r') as z:
-        for file in z.namelist():
-            if not file.endswith(".exe"):
-                continue
-            z.extract(file, tempdir)
-            origin = tempdir / file
-            shutil.move(origin, work_dir / "root" / "bin")
+download_zip_and_extract_to_bin(work_dir, "https://geekuninstaller.com/geek.zip", "geek.zip", lambda f: f.endswith(".exe"))
 
 # aria2
-with tempfile.TemporaryDirectory(prefix='download_aria2') as tempdir:
-    tempdir = Path(tempdir)
-    github_release = json.loads(webcat("https://api.github.com/repos/aria2/aria2/releases"))[0] # primeira
-    for asset in github_release['assets']:
-        try:
-            asset['name'].index("win-64bit")
-            aria2_zip = download_to(asset['browser_download_url'], tempdir, filename="aria2.zip")
-            with zipfile.ZipFile(aria2_zip, 'r') as z:
-                for file in z.namelist():
-                    if not file.endswith(".exe"):
-                        continue
-                    z.extract(file, tempdir)
-                    origin = tempdir / file
-                    shutil.move(origin, work_dir / "root" / "bin")
-        except ValueError:
-            pass
+github_release = json.loads(webcat("https://api.github.com/repos/aria2/aria2/releases"))[0] # primeira
+for asset in github_release['assets']:
+    if "win-64bit" in asset['name']:
+        download_zip_and_extract_to_bin(work_dir, asset['browser_download_url'], "aria2.zip", lambda f: f.endswith(".exe"))
 
 
 # Windows Update Blocker
