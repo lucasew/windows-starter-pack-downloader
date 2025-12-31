@@ -70,35 +70,31 @@ skeleton_dir = Path(__file__).parent / "skeleton"
 shutil.copytree(skeleton_dir, work_dir)
 
 # vlc
-with tempfile.TemporaryDirectory(prefix='download_vlc') as tempdir:
-    vlc_page_content = webcat("https://www.videolan.org/vlc/releases/")
-    regex = r"vlc\/releases/(.*)\.html"
-    last_version = next(re.finditer(regex, vlc_page_content)).groups()[0]
-    final_url = f"https://get.videolan.org/vlc/{last_version}/win64/vlc-{last_version}-win64.exe"
-    download_to(final_url, work_dir)
+vlc_page_content = webcat("https://www.videolan.org/vlc/releases/")
+regex = r"vlc\/releases/(.*)\.html"
+last_version = next(re.finditer(regex, vlc_page_content)).groups()[0]
+final_url = f"https://get.videolan.org/vlc/{last_version}/win64/vlc-{last_version}-win64.exe"
+download_to(final_url, work_dir)
 
 # 7zip
-with tempfile.TemporaryDirectory(prefix='download_7zip') as tempdir:
-    sevenzip_page_content = webcat("https://www.7-zip.org/")
-    regex = r"(a\/.*x64\.exe)"
-    url_part = next(re.finditer(regex, sevenzip_page_content)).groups()[0]
-    final_url = "https://www.7-zip.org/" + url_part
-    download_to(final_url, work_dir)
+sevenzip_page_content = webcat("https://www.7-zip.org/")
+regex = r"(a\/.*x64\.exe)"
+url_part = next(re.finditer(regex, sevenzip_page_content)).groups()[0]
+final_url = "https://www.7-zip.org/" + url_part
+download_to(final_url, work_dir)
 
 # adwcleaner
-with tempfile.TemporaryDirectory(prefix='download_adwcleaner') as tempdir:
-    download_to("https://adwcleaner.malwarebytes.com/adwcleaner?channel=release", work_dir, filename="adwcleaner.exe")
+download_to("https://adwcleaner.malwarebytes.com/adwcleaner?channel=release", work_dir, filename="adwcleaner.exe")
 
 # rclone
 download_zip_and_extract_to_bin(work_dir, "https://downloads.rclone.org/rclone-current-windows-amd64.zip", "rclone.zip", lambda f: f.endswith("rclone.exe"))
 
 # yt-dlp
-with tempfile.TemporaryDirectory(prefix='download_ytdlp') as tempdir:
-    github_release = json.loads(webcat("https://api.github.com/repos/yt-dlp/yt-dlp/releases"))[0] # primeira
-    for asset in github_release['assets']:
-        if asset['name'] != "yt-dlp.exe":
-            continue
-        download_to(asset['browser_download_url'], work_dir / "root" / "bin", filename="yt-dlp.exe")
+github_release = json.loads(webcat("https://api.github.com/repos/yt-dlp/yt-dlp/releases"))[0] # primeira
+for asset in github_release['assets']:
+    if asset['name'] != "yt-dlp.exe":
+        continue
+    download_to(asset['browser_download_url'], work_dir / "root" / "bin", filename="yt-dlp.exe")
 
 # ffmpeg
 download_zip_and_extract_to_bin(work_dir, "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", "ffmpeg.zip", lambda f: "/bin/" in f)
