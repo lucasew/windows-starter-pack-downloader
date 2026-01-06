@@ -56,6 +56,15 @@ def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
                         shutil.move(extracted_file, bin_dir)
 
 
+def is_rclone_exe(filename):
+    return filename.endswith("rclone.exe")
+
+def is_ffmpeg_bin(filename):
+    return "/bin/" in filename
+
+def is_executable(filename):
+    return filename.endswith(".exe")
+
 args = parser.parse_args()
 
 for d in [args.output_dir / "root" / "Program Files", args.output_dir / "root" / "bin"]:
@@ -81,13 +90,13 @@ sevenzip_page_content = webcat("https://www.7-zip.org/")
 regex = r"(a\/.*x64\.exe)"
 url_part = next(re.finditer(regex, sevenzip_page_content)).groups()[0]
 final_url = "https://www.7-zip.org/" + url_part
-download_to(final_url, work_dir)
+download_to(final_url, work_dir, filename="7z.exe")
 
 # adwcleaner
 download_to("https://adwcleaner.malwarebytes.com/adwcleaner?channel=release", work_dir, filename="adwcleaner.exe")
 
 # rclone
-download_zip_and_extract_to_bin(work_dir, "https://downloads.rclone.org/rclone-current-windows-amd64.zip", "rclone.zip", lambda f: f.endswith("rclone.exe"))
+download_zip_and_extract_to_bin(work_dir, "https://downloads.rclone.org/rclone-current-windows-amd64.zip", "rclone.zip", is_rclone_exe)
 
 # yt-dlp
 github_release = json.loads(webcat("https://api.github.com/repos/yt-dlp/yt-dlp/releases"))[0] # primeira
@@ -97,16 +106,16 @@ for asset in github_release['assets']:
     download_to(asset['browser_download_url'], work_dir / "root" / "bin", filename="yt-dlp.exe")
 
 # ffmpeg
-download_zip_and_extract_to_bin(work_dir, "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", "ffmpeg.zip", lambda f: "/bin/" in f)
+download_zip_and_extract_to_bin(work_dir, "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", "ffmpeg.zip", is_ffmpeg_bin)
 
 # geek uninstaller
-download_zip_and_extract_to_bin(work_dir, "https://geekuninstaller.com/geek.zip", "geek.zip", lambda f: f.endswith(".exe"))
+download_zip_and_extract_to_bin(work_dir, "https://geekuninstaller.com/geek.zip", "geek.zip", is_executable)
 
 # aria2
 github_release = json.loads(webcat("https://api.github.com/repos/aria2/aria2/releases"))[0] # primeira
 for asset in github_release['assets']:
     if "win-64bit" in asset['name']:
-        download_zip_and_extract_to_bin(work_dir, asset['browser_download_url'], "aria2.zip", lambda f: f.endswith(".exe"))
+        download_zip_and_extract_to_bin(work_dir, asset['browser_download_url'], "aria2.zip", is_executable)
 
 
 # Windows Update Blocker
