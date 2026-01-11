@@ -3,7 +3,7 @@
 from pathlib import Path
 from argparse import ArgumentParser
 import re
-from urllib.request import urlopen, Request, urlretrieve
+from urllib.request import urlopen
 import shutil
 import tempfile
 import zipfile
