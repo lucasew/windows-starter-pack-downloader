@@ -7,13 +7,16 @@ from urllib.request import urlopen, Request, urlretrieve
 import shutil
 import tempfile
 import zipfile
+import ssl
 import json
 
 parser = ArgumentParser()
 parser.add_argument("output_dir", type=Path)
 
+context = ssl.create_default_context()
+
 def download_to(request, output_dir, filename=None):
-    res = urlopen(request)
+    res = urlopen(request, context=context)
     print(f"Downloading {res.url}...")
 
     file_path = output_dir
@@ -81,7 +84,8 @@ sevenzip_page_content = webcat("https://www.7-zip.org/")
 regex = r"(a\/.*x64\.exe)"
 url_part = next(re.finditer(regex, sevenzip_page_content)).groups()[0]
 final_url = "https://www.7-zip.org/" + url_part
-download_to(final_url, work_dir)
+sevenzip_filename = url_part.split("/")[-1]
+download_to(final_url, work_dir, filename=sevenzip_filename)
 
 # adwcleaner
 download_to("https://adwcleaner.malwarebytes.com/adwcleaner?channel=release", work_dir, filename="adwcleaner.exe")
