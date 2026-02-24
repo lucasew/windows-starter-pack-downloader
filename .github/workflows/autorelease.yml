@@ -36,6 +36,7 @@ jobs:
           body: "Auto-generated changes from codegen."
           branch: "codegen-update"
           delete-branch: true
+          base: main
 
       - name: Run CI
         run: mise run ci
