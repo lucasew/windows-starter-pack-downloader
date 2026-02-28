@@ -1,0 +1,1 @@
+- 2024-05-24: [Critical] Path Traversal: When extracting zip files, always use the return value of `ZipFile.extract()` rather than concatenating the target directory with the zip entry name, as malicious zip entries with absolute paths or `..` can escape the intended extraction directory.

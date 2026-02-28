@@ -18,9 +18,12 @@ def download_to(request, output_dir, filename=None):
 
     file_path = output_dir
     if filename is None:
-        file_path = file_path / res.url.split("/")[-1]
-    else:
-        file_path = file_path / filename
+        filename = res.url.split("/")[-1]
+
+    # Sanitize filename to prevent path traversal
+    filename = Path(filename).name
+    file_path = file_path / filename
+
     with open(str(file_path), 'wb') as f:
         while True:
             chunk = res.read(16*1024)
@@ -50,8 +53,8 @@ def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
         with zipfile.ZipFile(downloaded_zip, 'r') as z:
             for file_path_str in z.namelist():
                 if file_filter(file_path_str):
-                    z.extract(file_path_str, tempdir)
-                    extracted_file = tempdir / file_path_str
+                    extracted_file_str = z.extract(file_path_str, tempdir)
+                    extracted_file = Path(extracted_file_str)
                     if not extracted_file.is_dir():
                         shutil.move(extracted_file, bin_dir)
 
