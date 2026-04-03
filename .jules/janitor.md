@@ -1,0 +1,1 @@
+- 2025-04-03: Align flake8 configuration with black formatting by setting max-line-length to 88 to prevent conflicting linting rules and remove unused imports.
