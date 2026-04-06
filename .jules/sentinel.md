@@ -1,0 +1,1 @@
+- 2025-04-06: [CRITICAL] Prevent SSRF and arbitrary local file access by enforcing http/https schemes in urlopen calls.

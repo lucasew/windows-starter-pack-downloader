@@ -13,6 +13,9 @@ parser = ArgumentParser()
 parser.add_argument("output_dir", type=Path)
 
 def download_to(request, output_dir, filename=None):
+    url_str = request.full_url if isinstance(request, Request) else request
+    if not (url_str.startswith("http://") or url_str.startswith("https://")):
+        raise ValueError(f"Security Error: Scheme not allowed for URL {url_str}")
     res = urlopen(request)
     print(f"Downloading {res.url}...")
 
@@ -31,6 +34,9 @@ def download_to(request, output_dir, filename=None):
 
 
 def webcat(request):
+    url_str = request.full_url if isinstance(request, Request) else request
+    if not (url_str.startswith("http://") or url_str.startswith("https://")):
+        raise ValueError(f"Security Error: Scheme not allowed for URL {url_str}")
     res = urlopen(request)
     print(f"Fetching {res.url}...")
     data = b''
