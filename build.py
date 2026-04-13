@@ -13,6 +13,21 @@ parser = ArgumentParser()
 parser.add_argument("output_dir", type=Path)
 
 def download_to(request, output_dir, filename=None):
+    """
+    Downloads a file from the given request URL or Request object to the output directory.
+
+    Streams the file to disk in chunks to avoid high memory usage. The filename is inferred
+    from the URL by default, which can fail on complex URLs (e.g., redirects with tokens).
+    An explicit filename argument should be provided in such cases.
+
+    Args:
+        request: The URL string or urllib.request.Request object.
+        output_dir: The directory where the file will be saved.
+        filename: Optional explicit filename. If None, inferred from the URL.
+
+    Returns:
+        The pathlib.Path of the downloaded file.
+    """
     res = urlopen(request)
     print(f"Downloading {res.url}...")
 
@@ -31,6 +46,18 @@ def download_to(request, output_dir, filename=None):
 
 
 def webcat(request):
+    """
+    Fetches the content of a URL and returns it as a UTF-8 decoded string.
+
+    This is often used to scrape dynamic links or JSON metadata from vendor
+    websites to determine the latest download URLs for tools.
+
+    Args:
+        request: The URL string or urllib.request.Request object.
+
+    Returns:
+        The content of the HTTP response as a UTF-8 string.
+    """
     res = urlopen(request)
     print(f"Fetching {res.url}...")
     data = b''
@@ -43,6 +70,20 @@ def webcat(request):
 
 
 def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
+    """
+    Downloads a ZIP file, extracts specific files matching a filter, and moves them to the bin dir.
+
+    Uses `download_to` to place the ZIP in a temporary directory. Only extracts files
+    that match the provided `file_filter` function. Extracted files are safely handled
+    using `zipfile.ZipFile.extract()`, which prevents path traversal vulnerabilities,
+    and are then moved to `work_dir/root/bin`.
+
+    Args:
+        work_dir: The base directory of the postinstall setup.
+        url: The URL to download the ZIP file from.
+        zip_filename: The name to save the downloaded ZIP file as.
+        file_filter: A function that takes a filename string and returns True if it should be extracted.
+    """
     bin_dir = work_dir / "root" / "bin"
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = Path(tempdir)
@@ -57,12 +98,15 @@ def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
 
 
 def is_rclone_exe(filename):
+    """Filter function to extract only the rclone executable from its ZIP."""
     return filename.endswith("rclone.exe")
 
 def is_ffmpeg_bin(filename):
+    """Filter function to extract only files in the /bin/ directory from the ffmpeg ZIP."""
     return "/bin/" in filename
 
 def is_executable(filename):
+    """Filter function to extract any file ending with .exe."""
     return filename.endswith(".exe")
 
 args = parser.parse_args()
