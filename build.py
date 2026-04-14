@@ -9,51 +9,65 @@ import tempfile
 import zipfile
 import json
 
+from utils import report_error
+
 parser = ArgumentParser()
 parser.add_argument("output_dir", type=Path)
 
 def download_to(request, output_dir, filename=None):
-    res = urlopen(request)
-    print(f"Downloading {res.url}...")
+    try:
+        res = urlopen(request)
+        print(f"Downloading {res.url}...")
 
-    file_path = output_dir
-    if filename is None:
-        file_path = file_path / res.url.split("/")[-1]
-    else:
-        file_path = file_path / filename
-    with open(str(file_path), 'wb') as f:
-        while True:
-            chunk = res.read(16*1024)
-            if not chunk:
-                break
-            f.write(chunk)
-    return file_path
+        file_path = output_dir
+        if filename is None:
+            file_path = file_path / res.url.split("/")[-1]
+        else:
+            file_path = file_path / filename
+        with open(str(file_path), 'wb') as f:
+            while True:
+                chunk = res.read(16*1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+        return file_path
+    except Exception as e:
+        report_error(e)
+        raise
 
 
 def webcat(request):
-    res = urlopen(request)
-    print(f"Fetching {res.url}...")
-    data = b''
-    while True:
-        chunk = res.read(4096)
-        if not chunk:
-            break
-        data += chunk
-    return data.decode('utf-8')
+    try:
+        res = urlopen(request)
+        print(f"Fetching {res.url}...")
+        data = b''
+        while True:
+            chunk = res.read(4096)
+            if not chunk:
+                break
+            data += chunk
+        return data.decode('utf-8')
+    except Exception as e:
+        report_error(e)
+        raise
 
 
 def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
-    bin_dir = work_dir / "root" / "bin"
-    with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = Path(tempdir)
-        downloaded_zip = download_to(url, tempdir, filename=zip_filename)
-        with zipfile.ZipFile(downloaded_zip, 'r') as z:
-            for file_path_str in z.namelist():
-                if file_filter(file_path_str):
-                    z.extract(file_path_str, tempdir)
-                    extracted_file = tempdir / file_path_str
-                    if not extracted_file.is_dir():
-                        shutil.move(extracted_file, bin_dir)
+    try:
+        bin_dir = work_dir / "root" / "bin"
+        with tempfile.TemporaryDirectory() as tempdir:
+            tempdir = Path(tempdir)
+            downloaded_zip = download_to(url, tempdir, filename=zip_filename)
+            with zipfile.ZipFile(downloaded_zip, 'r') as z:
+                for file_path_str in z.namelist():
+                    if file_filter(file_path_str):
+                        z.extract(file_path_str, tempdir)
+                        extracted_file = tempdir / file_path_str
+                        if not extracted_file.is_dir():
+                            shutil.move(extracted_file, bin_dir)
+    except Exception as e:
+        report_error(e)
+        raise
 
 
 def is_rclone_exe(filename):
@@ -65,63 +79,122 @@ def is_ffmpeg_bin(filename):
 def is_executable(filename):
     return filename.endswith(".exe")
 
-args = parser.parse_args()
 
-for d in [args.output_dir / "root" / "Program Files", args.output_dir / "root" / "bin"]:
-    d.mkdir(parents=True, exist_ok=True)
-
-# copy skeleton to output
-
-work_dir = args.output_dir / "windows10_postinstall"
-assert not work_dir.exists(), "Work dir is not empty"
-skeleton_dir = Path(__file__).parent / "skeleton"
-
-shutil.copytree(skeleton_dir, work_dir)
-
-# vlc
-vlc_page_content = webcat("https://www.videolan.org/vlc/releases/")
-regex = r"vlc\/releases/(.*)\.html"
-last_version = next(re.finditer(regex, vlc_page_content)).groups()[0]
-final_url = f"https://get.videolan.org/vlc/{last_version}/win64/vlc-{last_version}-win64.exe"
-download_to(final_url, work_dir)
-
-# 7zip
-sevenzip_page_content = webcat("https://www.7-zip.org/")
-regex = r"(a\/.*x64\.exe)"
-url_part = next(re.finditer(regex, sevenzip_page_content)).groups()[0]
-final_url = "https://www.7-zip.org/" + url_part
-download_to(final_url, work_dir, filename="7z.exe")
-
-# adwcleaner
-download_to("https://adwcleaner.malwarebytes.com/adwcleaner?channel=release", work_dir, filename="adwcleaner.exe")
-
-# rclone
-download_zip_and_extract_to_bin(work_dir, "https://downloads.rclone.org/rclone-current-windows-amd64.zip", "rclone.zip", is_rclone_exe)
-
-# yt-dlp
-github_release = json.loads(webcat("https://api.github.com/repos/yt-dlp/yt-dlp/releases"))[0] # primeira
-for asset in github_release['assets']:
-    if asset['name'] != "yt-dlp.exe":
-        continue
-    download_to(asset['browser_download_url'], work_dir / "root" / "bin", filename="yt-dlp.exe")
-
-# ffmpeg
-download_zip_and_extract_to_bin(work_dir, "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", "ffmpeg.zip", is_ffmpeg_bin)
-
-# geek uninstaller
-download_zip_and_extract_to_bin(work_dir, "https://geekuninstaller.com/geek.zip", "geek.zip", is_executable)
-
-# aria2
-github_release = json.loads(webcat("https://api.github.com/repos/aria2/aria2/releases"))[0] # primeira
-for asset in github_release['assets']:
-    if "win-64bit" in asset['name']:
-        download_zip_and_extract_to_bin(work_dir, asset['browser_download_url'], "aria2.zip", is_executable)
+def install_vlc(work_dir):
+    try:
+        vlc_page_content = webcat("https://www.videolan.org/vlc/releases/")
+        regex = r"vlc\/releases/(.*)\.html"
+        last_version = next(re.finditer(regex, vlc_page_content)).groups()[0]
+        final_url = f"https://get.videolan.org/vlc/{last_version}/win64/vlc-{last_version}-win64.exe"
+        download_to(final_url, work_dir)
+    except Exception as e:
+        report_error(e)
+        raise
 
 
-# Windows Update Blocker
-with tempfile.TemporaryDirectory(prefix='download_wub') as tempdir:
-    tempdir = Path(tempdir)
-    downloaded_zip = download_to("https://www.sordum.org/files/downloads.php?st-windows-update-blocker", tempdir, "wub.zip")
-    with zipfile.ZipFile(downloaded_zip, 'r') as z:
-        z.extractall(tempdir)
-    shutil.move(tempdir / "Wub", work_dir / "root" / "Program Files")
+def install_7zip(work_dir):
+    try:
+        sevenzip_page_content = webcat("https://www.7-zip.org/")
+        regex = r"(a\/.*x64\.exe)"
+        url_part = next(re.finditer(regex, sevenzip_page_content)).groups()[0]
+        final_url = "https://www.7-zip.org/" + url_part
+        download_to(final_url, work_dir, filename="7z.exe")
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def install_adwcleaner(work_dir):
+    try:
+        download_to("https://adwcleaner.malwarebytes.com/adwcleaner?channel=release", work_dir, filename="adwcleaner.exe")
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def install_rclone(work_dir):
+    try:
+        download_zip_and_extract_to_bin(work_dir, "https://downloads.rclone.org/rclone-current-windows-amd64.zip", "rclone.zip", is_rclone_exe)
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def install_yt_dlp(work_dir):
+    try:
+        github_release = json.loads(webcat("https://api.github.com/repos/yt-dlp/yt-dlp/releases"))[0]
+        for asset in github_release['assets']:
+            if asset['name'] != "yt-dlp.exe":
+                continue
+            download_to(asset['browser_download_url'], work_dir / "root" / "bin", filename="yt-dlp.exe")
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def install_ffmpeg(work_dir):
+    try:
+        download_zip_and_extract_to_bin(work_dir, "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", "ffmpeg.zip", is_ffmpeg_bin)
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def install_geek_uninstaller(work_dir):
+    try:
+        download_zip_and_extract_to_bin(work_dir, "https://geekuninstaller.com/geek.zip", "geek.zip", is_executable)
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def install_aria2(work_dir):
+    try:
+        github_release = json.loads(webcat("https://api.github.com/repos/aria2/aria2/releases"))[0]
+        for asset in github_release['assets']:
+            if "win-64bit" in asset['name']:
+                download_zip_and_extract_to_bin(work_dir, asset['browser_download_url'], "aria2.zip", is_executable)
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def install_windows_update_blocker(work_dir):
+    try:
+        with tempfile.TemporaryDirectory(prefix='download_wub') as tempdir:
+            tempdir = Path(tempdir)
+            downloaded_zip = download_to("https://www.sordum.org/files/downloads.php?st-windows-update-blocker", tempdir, "wub.zip")
+            with zipfile.ZipFile(downloaded_zip, 'r') as z:
+                z.extractall(tempdir)
+            shutil.move(tempdir / "Wub", work_dir / "root" / "Program Files")
+    except Exception as e:
+        report_error(e)
+        raise
+
+
+def main():
+    args = parser.parse_args()
+
+    for d in [args.output_dir / "root" / "Program Files", args.output_dir / "root" / "bin"]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    # copy skeleton to output
+
+    work_dir = args.output_dir / "windows10_postinstall"
+    assert not work_dir.exists(), "Work dir is not empty"
+    skeleton_dir = Path(__file__).parent / "skeleton"
+
+    shutil.copytree(skeleton_dir, work_dir)
+
+    install_vlc(work_dir)
+    install_7zip(work_dir)
+    install_adwcleaner(work_dir)
+    install_rclone(work_dir)
+    install_yt_dlp(work_dir)
+    install_ffmpeg(work_dir)
+    install_geek_uninstaller(work_dir)
+    install_aria2(work_dir)
+    install_windows_update_blocker(work_dir)
+
+if __name__ == "__main__":
+    main()
