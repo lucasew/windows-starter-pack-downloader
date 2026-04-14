@@ -1,0 +1,1 @@
+- 2026-04-14: [Refactor] Extract methods, apply SRP, and encapsulate main execution block in build.py. Implemented centralized error reporting in utils.py
