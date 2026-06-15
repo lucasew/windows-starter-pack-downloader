@@ -13,6 +13,14 @@ parser = ArgumentParser()
 parser.add_argument("output_dir", type=Path)
 
 def download_to(request, output_dir, filename=None):
+    """
+    Downloads a resource from a URL and saves it to a specified directory.
+
+    If `filename` is omitted, the function attempts to infer it from the URL.
+    This inference can fail or yield incorrect names on complex URLs (e.g.,
+    redirects with tokens), so passing an explicit `filename` is recommended
+    for stability.
+    """
     res = urlopen(request)
     print(f"Downloading {res.url}...")
 
@@ -31,6 +39,12 @@ def download_to(request, output_dir, filename=None):
 
 
 def webcat(request):
+    """
+    Fetches the content of a URL and returns it as a decoded UTF-8 string.
+
+    Used primarily for scraping HTML or JSON payloads from vendor websites
+    (e.g., to determine the latest version or download URL).
+    """
     res = urlopen(request)
     print(f"Fetching {res.url}...")
     data = b''
@@ -43,6 +57,14 @@ def webcat(request):
 
 
 def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
+    """
+    Downloads a zip archive and extracts specific files to the `root/bin` directory.
+
+    Relies on `zipfile.ZipFile.extract()`, which safely handles path traversal
+    vulnerabilities (e.g., preventing absolute paths or '..' sequences) without
+    requiring manual checks. `file_filter` is a callback that determines if a file
+    should be extracted based on its name.
+    """
     bin_dir = work_dir / "root" / "bin"
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = Path(tempdir)
@@ -57,12 +79,15 @@ def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
 
 
 def is_rclone_exe(filename):
+    """Callback filter to exclusively extract 'rclone.exe'."""
     return filename.endswith("rclone.exe")
 
 def is_ffmpeg_bin(filename):
+    """Callback filter to extract files specifically from the 'bin' directory."""
     return "/bin/" in filename
 
 def is_executable(filename):
+    """Callback filter to broadly extract any Windows executable."""
     return filename.endswith(".exe")
 
 args = parser.parse_args()
