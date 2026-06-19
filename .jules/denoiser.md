@@ -1,0 +1,1 @@
+- 2024-05-24: [Denoiser] Added recurring rejection patterns to CONSISTENTLY_IGNORED.md to improve signal-to-noise ratio.
