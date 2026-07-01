@@ -1,0 +1,1 @@
+- 2024-07-01: Set up centralized error reporting function report_error() and implemented it in build.py via a main() loop.
