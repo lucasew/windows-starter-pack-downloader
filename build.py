@@ -50,8 +50,8 @@ def download_zip_and_extract_to_bin(work_dir, url, zip_filename, file_filter):
         with zipfile.ZipFile(downloaded_zip, 'r') as z:
             for file_path_str in z.namelist():
                 if file_filter(file_path_str):
-                    z.extract(file_path_str, tempdir)
-                    extracted_file = tempdir / file_path_str
+                    extracted_path = z.extract(file_path_str, tempdir)
+                    extracted_file = Path(extracted_path)
                     if not extracted_file.is_dir():
                         shutil.move(extracted_file, bin_dir)
 
