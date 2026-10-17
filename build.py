@@ -12,9 +12,28 @@ import json
 parser = ArgumentParser()
 parser.add_argument("output_dir", type=Path)
 
-def download_to(request, output_dir, filename=None):
-    res = urlopen(request)
+def open_request(request):
+    # downloads.rclone.org rejects the default Python-urllib user agent.
+    if isinstance(request, str):
+        request = Request(request, headers={"User-Agent": "Mozilla/5.0"})
+    elif request.get_header("User-agent") is None:
+        request.add_header("User-Agent", "Mozilla/5.0")
+    return urlopen(request)
+
+
+def download_to(request, output_dir, filename=None, hops=0):
+    res = open_request(request)
     print(f"Downloading {res.url}...")
+
+    # get.videolan.org answers 200 text/html with a meta refresh to a mirror.
+    if res.headers.get_content_type() == "text/html":
+        if hops >= 2:
+            raise RuntimeError(f"HTML response from {res.url}")
+        page = res.read().decode("utf-8", "replace")
+        match = re.search(r"URL=['\"](https?://[^'\"]+)['\"]", page, re.I)
+        if match is None:
+            raise RuntimeError(f"no download URL in {res.url}")
+        return download_to(match.group(1), output_dir, filename=filename, hops=hops + 1)
 
     file_path = output_dir
     if filename is None:
@@ -31,7 +50,7 @@ def download_to(request, output_dir, filename=None):
 
 
 def webcat(request):
-    res = urlopen(request)
+    res = open_request(request)
     print(f"Fetching {res.url}...")
     data = b''
     while True:
@@ -87,9 +106,8 @@ download_to(final_url, work_dir)
 
 # 7zip
 sevenzip_page_content = webcat("https://www.7-zip.org/")
-regex = r"(a\/.*x64\.exe)"
-url_part = next(re.finditer(regex, sevenzip_page_content)).groups()[0]
-final_url = "https://www.7-zip.org/" + url_part
+regex = r"https://github\.com/ip7z/7zip/releases/download/[^\"']+-x64\.exe"
+final_url = next(re.finditer(regex, sevenzip_page_content)).group(0)
 download_to(final_url, work_dir, filename="7z.exe")
 
 # adwcleaner
